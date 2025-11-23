@@ -16,57 +16,32 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 500);
 });
 
-function setupEventListeners() {
-    const searchInput = document.getElementById('searchInput');
-    const genreSelect = document.getElementById('genreSelect');
-    const yearSelect = document.getElementById('yearSelect');
-    const clearFiltersBtn = document.getElementById('clearFilters');
-    
-    if (searchInput) {
-        searchInput.addEventListener('input', function(e) {
-            currentSearchTerm = e.target.value.toLowerCase();
-            currentPage = 1;
-            filterBooks();
-        });
+document.addEventListener('click', function(e) {
+
+    if (e.target.classList.contains('page-link')) {
+        currentPage = parseInt(e.target.dataset.page);
+        renderBooks();
+        scrollToTop();
     }
 
-    if (genreSelect) {
-        genreSelect.addEventListener('change', function(e) {
-            currentGenreFilter = e.target.value;
-            currentPage = 1;
-            filterBooks();
-        });
-    }
-
-    if (yearSelect) {
-        yearSelect.addEventListener('change', function(e) {
-            currentYearFilter = e.target.value;
-            currentPage = 1;
-            filterBooks();
-        });
-    }
-
-    if (clearFiltersBtn) {
-        clearFiltersBtn.addEventListener('click', function() {
-            if (genreSelect) genreSelect.value = 'all';
-            if (yearSelect) yearSelect.value = 'all';
-            if (searchInput) searchInput.value = '';
-            currentGenreFilter = 'all';
-            currentYearFilter = 'all';
-            currentSearchTerm = '';
-            currentPage = 1;
-            filterBooks();
-        });
-    }
-    
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('page-link')) {
-            currentPage = parseInt(e.target.dataset.page);
+    if (e.target.classList.contains('prev-btn')) {
+        if (currentPage > 1) {
+            currentPage--;
             renderBooks();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            scrollToTop();
         }
-    });
-}
+    }
+
+    if (e.target.classList.contains('next-btn')) {
+        const totalPages = Math.ceil(filteredBooks.length / booksPerPage);
+        if (currentPage < totalPages) {
+            currentPage++;
+            renderBooks();
+            scrollToTop();
+        }
+    }
+});
+
 
 function generateFilters() {
     if (!books || books.length === 0) return;
@@ -257,18 +232,79 @@ function renderBooks() {
 
 function renderPagination(totalPages) {
     const pagination = document.getElementById('pagination');
-    if (!pagination) return;
-    
     if (totalPages <= 1) {
         pagination.innerHTML = '';
         return;
     }
+
+    let paginationHTML = '';
     
-    let buttons = '';
-    for (let i = 1; i <= totalPages; i++) {
-        buttons += `<button class="page-link ${i === currentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
+    paginationHTML += `
+        <button class="page-btn prev-btn ${currentPage === 1 ? 'disabled' : ''}" 
+                ${currentPage === 1 ? 'disabled' : ''}>
+            ← Précédent
+        </button>
+    `;
+
+    let startPage, endPage;
+    const maxPagesToShow = 5;
+
+    if (totalPages <= maxPagesToShow) {
+        startPage = 1;
+        endPage = totalPages;
+    } else {
+        const halfPages = Math.floor(maxPagesToShow / 2);
+        
+        if (currentPage <= halfPages) {
+            startPage = 1;
+            endPage = maxPagesToShow;
+        } else if (currentPage + halfPages >= totalPages) {
+            startPage = totalPages - maxPagesToShow + 1;
+            endPage = totalPages;
+        } else {
+            startPage = currentPage - halfPages;
+            endPage = currentPage + halfPages;
+        }
     }
-    pagination.innerHTML = buttons;
+
+    if (startPage > 1) {
+        paginationHTML += `<button class="page-link" data-page="1">1</button>`;
+        if (startPage > 2) {
+            paginationHTML += `<span class="ellipsis">...</span>`;
+        }
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+        paginationHTML += `
+            <button class="page-link ${i === currentPage ? 'active' : ''}" data-page="${i}">
+                ${i}
+            </button>
+        `;
+    }
+
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            paginationHTML += `<span class="ellipsis">...</span>`;
+        }
+        paginationHTML += `<button class="page-link" data-page="${totalPages}">${totalPages}</button>`;
+    }
+
+    paginationHTML += `
+        <button class="page-btn next-btn ${currentPage === totalPages ? 'disabled' : ''}"
+                ${currentPage === totalPages ? 'disabled' : ''}>
+            Suivant →
+        </button>
+    `;
+
+    const startItem = (currentPage - 1) * booksPerPage + 1;
+    const endItem = Math.min(currentPage * booksPerPage, filteredBooks.length);
+    paginationHTML += `
+        <div class="pagination-info">
+            ${startItem}-${endItem} sur ${filteredBooks.length} livres
+        </div>
+    `;
+
+    pagination.innerHTML = paginationHTML;
 }
 
 function toggleDescription(id) {
